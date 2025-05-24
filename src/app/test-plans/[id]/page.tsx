@@ -2,11 +2,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, CalendarDays, Info } from 'lucide-react';
+import { ArrowLeft, Edit, CalendarDays, Info, TestTube } from 'lucide-react';
 import type { TestPlan, TestPlanStatus } from '@/lib/types';
 import { notFound } from 'next/navigation';
-import { db, testPlans } from '@/lib/db';
+import { db, testPlans, testPlanTestCases, testCases } from '@/lib/db';
 import { eq } from 'drizzle-orm';
+import TestCaseManager from './TestCaseManager';
 
 async function getTestPlan(id: string): Promise<TestPlan | null> {
   try {
@@ -23,6 +24,25 @@ async function getTestPlan(id: string): Promise<TestPlan | null> {
   }
 }
 
+async function getTestPlanTestCases(testPlanId: string) {
+  try {
+    const result = await db
+      .select({
+        testCase: testCases,
+        addedAt: testPlanTestCases.addedAt,
+        addedBy: testPlanTestCases.addedBy,
+      })
+      .from(testPlanTestCases)
+      .innerJoin(testCases, eq(testPlanTestCases.testCaseId, testCases.id))
+      .where(eq(testPlanTestCases.testPlanId, testPlanId));
+
+    return result;
+  } catch (error) {
+    console.error('Error fetching test plan test cases:', error);
+    return [];
+  }
+}
+
 interface ViewTestPlanPageProps {
   params: Promise<{ id: string }>;
 }
@@ -30,6 +50,7 @@ interface ViewTestPlanPageProps {
 export default async function ViewTestPlanPage({ params }: ViewTestPlanPageProps) {
   const { id } = await params;
   const testPlan = await getTestPlan(id);
+  const linkedTestCases = await getTestPlanTestCases(id);
 
   if (!testPlan) {
     notFound();
@@ -47,7 +68,7 @@ export default async function ViewTestPlanPage({ params }: ViewTestPlanPageProps
 
   return (
     <div className="container mx-auto py-8">
-      <Card className="max-w-3xl mx-auto shadow-lg">
+      <Card className="max-w-4xl mx-auto shadow-lg">
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
@@ -86,6 +107,17 @@ export default async function ViewTestPlanPage({ params }: ViewTestPlanPageProps
               <p><strong className="text-foreground/90">Start Date:</strong> {testPlan.startDate ? new Date(testPlan.startDate).toLocaleDateString() : 'N/A'}</p>
               <p><strong className="text-foreground/90">End Date:</strong> {testPlan.endDate ? new Date(testPlan.endDate).toLocaleDateString() : 'N/A'}</p>
             </div>
+          </div>
+
+          <div className="p-4 border rounded-md bg-muted/20">
+            <div className="flex items-center text-lg font-semibold mb-2">
+              <TestTube className="mr-2 h-5 w-5 text-primary" />
+              Test Cases ({linkedTestCases.length})
+            </div>
+            <TestCaseManager 
+              testPlanId={testPlan.id} 
+              initialTestCases={linkedTestCases}
+            />
           </div>
 
         </CardContent>

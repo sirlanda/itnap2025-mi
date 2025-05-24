@@ -1,10 +1,11 @@
-import { seedTestPlans, seedTestCases } from '../src/lib/db.js';
+import { seedTestPlans, seedTestCases, seedTestPlanTestCases } from '../src/lib/db.js';
 
 async function main() {
   console.log('🌱 Seeding database...');
   
   await seedTestPlans();
   await seedTestCases();
+  await seedTestPlanTestCases();
   
   console.log('✅ Database seeded successfully!');
   process.exit(0);
