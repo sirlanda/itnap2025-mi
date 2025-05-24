@@ -9,10 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Edit, Trash2, MoreHorizontal, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { TestPlan, TestPlanStatus } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 
 export default function TestPlansPage() {
   const [testPlans, setTestPlans] = useState<TestPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     fetchTestPlans();
@@ -112,7 +114,15 @@ export default function TestPlansPage() {
               </TableHeader>
               <TableBody>
                 {testPlans.length > 0 ? testPlans.map((plan) => (
-                  <TableRow key={plan.id}>
+                  <TableRow
+                    key={plan.id}
+                    className="cursor-pointer hover:bg-accent/40 group"
+                    onClick={e => {
+                      if (!(e.target as HTMLElement).closest('.actions-cell')) {
+                        router.push(`/test-plans/${plan.id}`);
+                      }
+                    }}
+                  >
                     <TableCell className="font-medium">{plan.id}</TableCell>
                     <TableCell className="max-w-sm truncate">{plan.name}</TableCell>
                     <TableCell>
@@ -121,7 +131,7 @@ export default function TestPlansPage() {
                     <TableCell>{plan.startDate ? new Date(plan.startDate).toLocaleDateString() : '-'}</TableCell>
                     <TableCell>{plan.endDate ? new Date(plan.endDate).toLocaleDateString() : '-'}</TableCell>
                     <TableCell>{plan.createdBy || '-'}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right actions-cell">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -131,16 +141,16 @@ export default function TestPlansPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/test-plans/${plan.id}`}>
+                            <Link href={`/test-plans/${plan.id}`} onClick={e => e.stopPropagation()}>
                               <Eye className="mr-2 h-4 w-4" /> View
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/test-plans/${plan.id}/edit`}>
+                            <Link href={`/test-plans/${plan.id}/edit`} onClick={e => e.stopPropagation()}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(plan.id)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                          <DropdownMenuItem onClick={e => { e.stopPropagation(); handleDelete(plan.id); }} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>

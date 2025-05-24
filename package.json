@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:reset": "rm -f sqlite.db && rm -rf drizzle && drizzle-kit generate && drizzle-kit migrate && npx tsx scripts/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",

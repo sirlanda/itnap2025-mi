@@ -107,7 +107,54 @@ export async function seedTestCases() {
     for (const tc of cases) {
       db.insert(testCases).values(tc).run?.() ?? db.insert(testCases).values(tc);
     }
-    console.log('Seeded test cases');
+    // Seed steps for each test case
+    const stepTemplates = {
+      TC001: [
+        { instruction: 'Navigate to login page', expectedResult: 'Login page is displayed' },
+        { instruction: 'Enter valid username and password', expectedResult: 'Credentials are entered' },
+        { instruction: 'Click Login button', expectedResult: 'User is logged in and dashboard is shown' },
+      ],
+      TC002: [
+        { instruction: 'Navigate to login page', expectedResult: 'Login page is displayed' },
+        { instruction: 'Enter valid username and invalid password', expectedResult: 'Credentials are entered' },
+        { instruction: 'Click Login button', expectedResult: 'Error message is shown' },
+      ],
+      TC003: [
+        { instruction: 'Go to profile creation page', expectedResult: 'Profile creation form is displayed' },
+        { instruction: 'Fill in required fields', expectedResult: 'Fields are filled' },
+        { instruction: 'Submit the form', expectedResult: 'Profile is created' },
+        { instruction: 'Verify profile appears in list', expectedResult: 'Profile is listed' },
+      ],
+      TC004: [
+        { instruction: 'Open profile settings', expectedResult: 'Profile settings are displayed' },
+        { instruction: 'Edit profile information', expectedResult: 'Fields are editable' },
+        { instruction: 'Save changes', expectedResult: 'Profile is updated' },
+      ],
+      TC005: [
+        { instruction: 'Go to password reset page', expectedResult: 'Password reset form is displayed' },
+        { instruction: 'Enter registered email', expectedResult: 'Email is accepted' },
+        { instruction: 'Submit reset request', expectedResult: 'Reset email is sent' },
+        { instruction: 'Follow reset link', expectedResult: 'Reset page is shown' },
+        { instruction: 'Set new password', expectedResult: 'Password is updated' },
+      ],
+    };
+    for (const tc of cases) {
+      const steps = stepTemplates[tc.id as keyof typeof stepTemplates] || [];
+      for (let i = 0; i < steps.length; i++) {
+        db.insert(testSteps).values({
+          id: `${tc.id}-S${i+1}`,
+          testCaseId: tc.id,
+          instruction: steps[i].instruction,
+          expectedResult: steps[i].expectedResult,
+        }).run?.() ?? db.insert(testSteps).values({
+          id: `${tc.id}-S${i+1}`,
+          testCaseId: tc.id,
+          instruction: steps[i].instruction,
+          expectedResult: steps[i].expectedResult,
+        });
+      }
+    }
+    console.log('Seeded test cases and steps');
   }
 }
 

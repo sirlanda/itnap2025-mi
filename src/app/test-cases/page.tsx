@@ -13,6 +13,7 @@ import type { TestCase, Priority, TestCaseStatus } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAllTestCasesAction, deleteTestCaseAction } from '@/server/actions/test-case-actions';
 import { toast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 export default function TestCasesPage() {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -21,6 +22,7 @@ export default function TestCasesPage() {
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<TestCaseStatus | 'all'>('all');
   const [deleteInProgress, setDeleteInProgress] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchTestCases = async () => {
@@ -168,7 +170,15 @@ export default function TestCasesPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredTestCases.length > 0 ? filteredTestCases.map((tc) => (
-                    <TableRow key={tc.id}>
+                    <TableRow
+                      key={tc.id}
+                      className="cursor-pointer hover:bg-accent/40 group"
+                      onClick={e => {
+                        if (!(e.target as HTMLElement).closest('.actions-cell')) {
+                          router.push(`/test-cases/${tc.id}/view`);
+                        }
+                      }}
+                    >
                       <TableCell className="font-medium">{tc.id}</TableCell>
                       <TableCell className="max-w-xs truncate">{tc.title}</TableCell>
                       <TableCell>{tc.module || '-'}</TableCell>
@@ -179,7 +189,7 @@ export default function TestCasesPage() {
                         <Badge variant={getStatusBadgeVariant(tc.status)}>{tc.status}</Badge>
                       </TableCell>
                       <TableCell>{new Date(tc.updatedAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right actions-cell">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0" disabled={deleteInProgress === tc.id}>
@@ -195,17 +205,17 @@ export default function TestCasesPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/test-cases/${tc.id}/view`}>
+                              <Link href={`/test-cases/${tc.id}/view`} onClick={e => e.stopPropagation()}>
                                 <Eye className="mr-2 h-4 w-4" /> View
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                              <Link href={`/test-cases/${tc.id}/edit`}>
+                              <Link href={`/test-cases/${tc.id}/edit`} onClick={e => e.stopPropagation()}>
                                 <Edit2 className="mr-2 h-4 w-4" /> Edit
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDelete(tc.id)}
+                              onClick={e => { e.stopPropagation(); handleDelete(tc.id); }}
                               className="text-destructive focus:text-destructive focus:bg-destructive/10"
                               disabled={deleteInProgress === tc.id}
                             >
