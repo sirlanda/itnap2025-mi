@@ -7,8 +7,9 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Ban } from 'lucide-react';
@@ -18,13 +19,13 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-
 const testPlanSchema = z.object({
   name: z.string().min(1, 'Test plan name is required.'),
-  description: z.string().optional(),
-  plannedStartDate: z.date().optional(),
-  plannedEndDate: z.date().optional(),
-  testCaseIds: z.string().optional().describe("Comma-separated test case IDs, e.g., TC001,TC002"), // Simple input for now
+  description: z.string().min(1, 'Description is required.'),
+  startDate: z.date().optional(),
+  endDate: z.date().optional(),
+  status: z.enum(['Active', 'Completed', 'Cancelled', 'Draft']).default('Draft'),
+  createdBy: z.string().optional(),
 });
 
 type TestPlanFormValues = z.infer<typeof testPlanSchema>;
@@ -37,19 +38,44 @@ export default function NewTestPlanPage() {
     defaultValues: {
       name: '',
       description: '',
-      testCaseIds: '',
+      status: 'Draft',
+      createdBy: '',
     },
   });
 
   const onSubmit = async (data: TestPlanFormValues) => {
-    console.log('New Test Plan Data:', data);
-    // Mock submission
-    await new Promise(resolve => setTimeout(resolve, 500));
-    toast({
-      title: 'Test Plan Created',
-      description: `Test plan "${data.name}" has been successfully created.`,
-    });
-    router.push('/test-plans');
+    try {
+      const response = await fetch('/api/test-plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: data.name,
+          description: data.description,
+          startDate: data.startDate?.toISOString(),
+          endDate: data.endDate?.toISOString(),
+          status: data.status,
+          createdBy: data.createdBy || 'Anonymous',
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Test Plan Created',
+          description: `Test plan "${data.name}" has been successfully created.`,
+        });
+        router.push('/test-plans');
+      } else {
+        throw new Error('Failed to create test plan');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create test plan. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -79,9 +105,45 @@ export default function NewTestPlanPage() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea placeholder="Describe the test plan" {...field} rows={3} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Draft">Draft</SelectItem>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="createdBy"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Created By</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Your name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -90,10 +152,10 @@ export default function NewTestPlanPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
-                  name="plannedStartDate"
+                  name="startDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Planned Start Date</FormLabel>
+                      <FormLabel>Start Date (Optional)</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -118,7 +180,7 @@ export default function NewTestPlanPage() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1)) } // Disable past dates
+                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() -1))}
                             initialFocus
                           />
                         </PopoverContent>
@@ -129,10 +191,10 @@ export default function NewTestPlanPage() {
                 />
                 <FormField
                   control={form.control}
-                  name="plannedEndDate"
+                  name="endDate"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Planned End Date</FormLabel>
+                      <FormLabel>End Date (Optional)</FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -157,7 +219,7 @@ export default function NewTestPlanPage() {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) => date < (form.getValues("plannedStartDate") || new Date(new Date().setDate(new Date().getDate() -1)))}
+                            disabled={(date) => date < (form.getValues("startDate") || new Date(new Date().setDate(new Date().getDate() -1)))}
                             initialFocus
                           />
                         </PopoverContent>
@@ -167,22 +229,6 @@ export default function NewTestPlanPage() {
                   )}
                 />
               </div>
-               <FormField
-                control={form.control}
-                name="testCaseIds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Test Case IDs (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., TC001, TC002, TC003" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Enter comma-separated IDs of test cases to include in this plan.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
             <CardFooter className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => router.back()}>

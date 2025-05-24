@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,35 +8,77 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Edit, Trash2, MoreHorizontal, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import type { TestPlan, TestExecutionStatus } from '@/lib/types';
-
-const initialMockTestPlans: TestPlan[] = [
-  { id: 'TP001', name: 'Sprint 2 Regression Suite', description: 'Regression tests for Sprint 2 features.', testCaseIds: ['TC001', 'TC002'], plannedStartDate: '2024-08-01', plannedEndDate: '2024-08-05', executionStatus: 'Not Started', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'TP002', name: 'User Authentication Tests', description: 'Comprehensive testing of user auth flows.', testCaseIds: ['TC001', 'TC002', 'TC005'], plannedStartDate: '2024-08-10', plannedEndDate: '2024-08-12', executionStatus: 'In Progress', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-  { id: 'TP003', name: 'New Feature Alpha Test', description: 'Testing the new alpha feature set.', testCaseIds: ['TC003', 'TC004'], plannedStartDate: '2024-08-15', executionStatus: 'Passed', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-];
+import type { TestPlan, TestPlanStatus } from '@/lib/types';
 
 export default function TestPlansPage() {
-  const [testPlans, setTestPlans] = useState<TestPlan[]>(initialMockTestPlans);
+  const [testPlans, setTestPlans] = useState<TestPlan[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this test plan?')) {
-      setTestPlans(prev => prev.filter(tp => tp.id !== id));
-      // In a real app, call an API to delete
+  useEffect(() => {
+    fetchTestPlans();
+  }, []);
+
+  const fetchTestPlans = async () => {
+    try {
+      const response = await fetch('/api/test-plans');
+      if (response.ok) {
+        const data = await response.json();
+        setTestPlans(data);
+      } else {
+        console.error('Failed to fetch test plans');
+      }
+    } catch (error) {
+      console.error('Error fetching test plans:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusBadgeVariant = (status?: TestExecutionStatus) => {
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this test plan?')) {
+      try {
+        const response = await fetch(`/api/test-plans/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          setTestPlans(prev => prev.filter(tp => tp.id !== id));
+        } else {
+          console.error('Failed to delete test plan');
+        }
+      } catch (error) {
+        console.error('Error deleting test plan:', error);
+      }
+    }
+  };
+
+  const getStatusBadgeVariant = (status: TestPlanStatus) => {
     switch (status) {
-      case 'Passed': return 'default'; // Success
-      case 'Failed': return 'destructive';
-      case 'In Progress': return 'secondary'; // Info/Warning
-      case 'Not Started': return 'outline';
-      case 'Blocked': return 'destructive';
-      case 'Skipped': return 'outline';
+      case 'Active': return 'default';
+      case 'Completed': return 'secondary';
+      case 'Cancelled': return 'destructive';
+      case 'Draft': return 'outline';
       default: return 'outline';
     }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Test Plans</h1>
+          <Button disabled>
+            <PlusCircle className="mr-2 h-4 w-4" /> Create Test Plan
+          </Button>
+        </div>
+        <Card className="shadow-lg">
+          <CardContent className="p-6">
+            <div className="text-center text-muted-foreground">Loading test plans...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -64,6 +106,7 @@ export default function TestPlansPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead>End Date</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -73,10 +116,11 @@ export default function TestPlansPage() {
                     <TableCell className="font-medium">{plan.id}</TableCell>
                     <TableCell className="max-w-sm truncate">{plan.name}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(plan.executionStatus)}>{plan.executionStatus || 'N/A'}</Badge>
+                      <Badge variant={getStatusBadgeVariant(plan.status)}>{plan.status}</Badge>
                     </TableCell>
-                    <TableCell>{plan.plannedStartDate ? new Date(plan.plannedStartDate).toLocaleDateString() : '-'}</TableCell>
-                    <TableCell>{plan.plannedEndDate ? new Date(plan.plannedEndDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell>{plan.startDate ? new Date(plan.startDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell>{plan.endDate ? new Date(plan.endDate).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell>{plan.createdBy || '-'}</TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -87,12 +131,12 @@ export default function TestPlansPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild>
-                            <Link href={`/test-plans/${plan.id}/view`}> {/* Placeholder View */}
+                            <Link href={`/test-plans/${plan.id}`}>
                               <Eye className="mr-2 h-4 w-4" /> View
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/test-plans/${plan.id}/edit`}> {/* Placeholder Edit */}
+                            <Link href={`/test-plans/${plan.id}/edit`}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </Link>
                           </DropdownMenuItem>
@@ -105,7 +149,7 @@ export default function TestPlansPage() {
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                       No test plans found.
                     </TableCell>
                   </TableRow>

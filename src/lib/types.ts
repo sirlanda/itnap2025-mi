@@ -1,6 +1,7 @@
 export type Priority = 'Low' | 'Medium' | 'High';
 export type TestCaseStatus = 'Draft' | 'Ready' | 'Obsolete';
 export type TestExecutionStatus = 'Not Started' | 'In Progress' | 'Passed' | 'Failed' | 'Blocked' | 'Skipped';
+export type TestPlanStatus = 'Active' | 'Completed' | 'Cancelled' | 'Draft';
 
 export interface TestStep {
   id: string;
@@ -27,15 +28,15 @@ export interface TestCase {
 }
 
 export interface TestPlan {
-  id: string; // Unique identifier
+  id: string;
   name: string;
   description: string;
-  testCaseIds: string[]; // List of test case IDs
-  plannedStartDate?: string; // ISO Date string
-  plannedEndDate?: string; // ISO Date string
-  executionStatus?: TestExecutionStatus; // Overall status
+  startDate?: string; // ISO Date string
+  endDate?: string; // ISO Date string
+  status: TestPlanStatus;
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
+  createdBy?: string;
 }
 
 export interface TestResultSummary {
