@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -11,7 +11,6 @@ import { startTestExecutionAction, getTestExecutionAction, getRecentTestExecutio
 import type { TestExecutionDetail, RecentExecution, TestExecutionStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getTestCaseAction } from "@/server/actions/test-case-actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
@@ -29,57 +28,44 @@ export default function TestExecutionPage() {
   const executionId = searchParams.get('execution');
   const testCaseId = searchParams.get('testCase');
 
-  useEffect(() => {
-    // Fetch recent executions when the page loads
-    const fetchRecentExecutions = async () => {
-      try {
-        const recents = await getRecentTestExecutionsAction();
-        setRecentExecutions(recents);
-      } catch (error) {
-        console.error("Failed to fetch recent executions:", error);
-      }
-    };
-
-    fetchRecentExecutions();
+  // Fetch recent executions
+  const fetchRecentExecutions = useCallback(async () => {
+    try {
+      const recents = await getRecentTestExecutionsAction();
+      setRecentExecutions(recents);
+    } catch (error) {
+      console.error("Failed to fetch recent executions:", error);
+    }
   }, []);
 
-  useEffect(() => {
-    // If we have an execution ID in the URL, load that execution
-    if (executionId) {
-      setIsLoading(true);
-
-      const fetchExecution = async () => {
-        try {
-          const execution = await getTestExecutionAction(executionId);
-          if (execution) {
-            setActiveExecution(execution);
-          } else {
-            toast({
-              title: "Execution not found",
-              description: "The requested test execution could not be found.",
-              variant: "destructive",
-            });
-          }
-        } catch (error) {
-          console.error("Failed to fetch execution:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load test execution. Please try again.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchExecution();
-    } else if (testCaseId) {
-      // If we have a test case ID, select it for execution
-      setSelectedTestCase(testCaseId);
+  // Fetch execution details
+  const fetchExecution = useCallback(async (id: string) => {
+    setIsLoading(true);
+    try {
+      const execution = await getTestExecutionAction(id);
+      if (execution) {
+        setActiveExecution(execution);
+      } else {
+        toast({
+          title: "Execution not found",
+          description: "The requested test execution could not be found.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to fetch execution:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load test execution. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [executionId, testCaseId, toast]);
+  }, [toast]);
 
-  const handleStartExecution = async () => {
+  // Handle starting a new execution
+  const handleStartExecution = useCallback(async () => {
     if (!selectedTestCase) {
       toast({
         title: "No test case selected",
@@ -96,14 +82,10 @@ export default function TestExecutionPage() {
       const result = await startTestExecutionAction(selectedTestCase);
 
       // Update the URL with the execution ID
-      router.push(`/test-execution?execution=${result.executionId}`);
+      router.push(`/test-execution?execution=${result.execution.id}`);
 
-      // Set the active execution
-      setActiveExecution({
-        execution: result.execution,
-        testCase: result.testCase,
-        steps: result.steps.map(step => ({ ...step, result: null })),
-      });
+      // Fetch execution details instead of directly setting
+      await fetchExecution(result.execution.id);
 
       toast({
         title: "Test execution started",
@@ -119,20 +101,22 @@ export default function TestExecutionPage() {
     } finally {
       setLoadingId(null);
     }
-  };
+  }, [selectedTestCase, toast, router, fetchExecution]);
 
-  const handleCompleteExecution = () => {
+  // Handle execution completion
+  const handleCompleteExecution = useCallback(() => {
     // Clear the active execution
     setActiveExecution(null);
 
     // Refresh recent executions
-    getRecentTestExecutionsAction().then(setRecentExecutions);
+    fetchRecentExecutions();
 
     // Navigate back to the main test execution page
     router.push('/test-execution');
-  };
+  }, [router, fetchRecentExecutions]);
 
-  const getStatusBadge = (status: TestExecutionStatus) => {
+  // Get status badge - moved outside render for consistency
+  const getStatusBadge = useCallback((status: TestExecutionStatus) => {
     let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
     let icon = null;
 
@@ -157,9 +141,27 @@ export default function TestExecutionPage() {
         {status}
       </Badge>
     );
-  };
+  }, []);
 
-  // If a test execution is active, show the test execution runner
+  // Load data on initial render and when URL params change
+  useEffect(() => {
+    fetchRecentExecutions();
+  }, [fetchRecentExecutions]);
+
+  useEffect(() => {
+    if (executionId) {
+      fetchExecution(executionId);
+    } else if (testCaseId) {
+      setSelectedTestCase(testCaseId);
+    }
+  }, [executionId, testCaseId, fetchExecution]);
+
+  // Navigate to execution
+  const navigateToExecution = useCallback((id: string) => {
+    router.push(`/test-execution?execution=${id}`);
+  }, [router]);
+
+  // Render test execution runner if an execution is active
   if (activeExecution) {
     return (
       <div className="space-y-6">
@@ -185,6 +187,7 @@ export default function TestExecutionPage() {
     );
   }
 
+  // Main test execution page
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -291,7 +294,7 @@ export default function TestExecutionPage() {
                         </div>
                       </div>
                       <Button
-                        onClick={() => router.push(`/test-execution?execution=${item.execution.id}`)}
+                        onClick={() => navigateToExecution(item.execution.id)}
                         variant="outline"
                         disabled={loadingId === item.execution.id}
                       >
