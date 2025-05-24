@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -25,6 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { navItems, authNavItems } from '@/config/nav'; // Assuming authNavItems for login/register for unauth state
 import { LogOut, Settings as SettingsIcon, UserCircle2 } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 
 // Mock auth state - in a real app, this would come from an auth provider
 const useAuth = () => ({ isAuthenticated: true, user: { username: 'john.doe', email: 'john.doe@example.com' } });
@@ -32,8 +34,26 @@ const useAuth = () => ({ isAuthenticated: true, user: { username: 'john.doe', em
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
-
   const currentNavItems = isAuthenticated ? navItems : authNavItems;
+  const router = useRouter();
+
+  React.useEffect(() => {
+    function handleKeydown(e: KeyboardEvent) {
+      if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        const tag = (e.target as HTMLElement).tagName;
+        if (["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+        if (e.code === "KeyC") {
+          e.preventDefault();
+          router.push("/test-cases");
+        } else if (e.code === "KeyP") {
+          e.preventDefault();
+          router.push("/test-plans");
+        }
+      }
+    }
+    window.addEventListener("keydown", handleKeydown);
+    return () => window.removeEventListener("keydown", handleKeydown);
+  }, [router]);
 
   return (
     <SidebarProvider defaultOpen>
