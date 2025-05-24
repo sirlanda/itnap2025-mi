@@ -48,6 +48,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } else if (e.code === "KeyP") {
           e.preventDefault();
           router.push("/test-plans");
+        } else if (e.code === "KeyX") {
+          e.preventDefault();
+          router.push("/test-execution");
         }
       }
     }
