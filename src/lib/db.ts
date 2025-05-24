@@ -47,6 +47,33 @@ export const testSteps = sqliteTable('test_steps', {
   comment: text('comment'),
 });
 
+// Test execution table to track test runs
+export const testExecutions = sqliteTable('test_executions', {
+  id: text('id').primaryKey(),
+  testCaseId: text('test_case_id').notNull().references(() => testCases.id),
+  testPlanId: text('test_plan_id').references(() => testPlans.id),
+  status: text('status').notNull(), // 'Not Started', 'In Progress', 'Passed', 'Failed', 'Blocked', 'Skipped'
+  startedAt: text('started_at').notNull(),
+  completedAt: text('completed_at'),
+  updatedAt: text('updated_at').notNull(),
+  executedBy: text('executed_by'),
+  environment: text('environment'),
+  notes: text('notes'),
+});
+
+// Test step results to track individual step outcomes
+export const testStepResults = sqliteTable('test_step_results', {
+  id: text('id').primaryKey(),
+  executionId: text('execution_id').notNull().references(() => testExecutions.id),
+  stepId: text('step_id').notNull().references(() => testSteps.id),
+  status: text('status').notNull(), // 'Not Started', 'In Progress', 'Passed', 'Failed', 'Blocked', 'Skipped'
+  actualResult: text('actual_result'),
+  comment: text('comment'),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+  // In a real app, we would have an attachments field or a separate table for attachments
+});
+
 const sqlite = new Database('sqlite.db');
 export const db = drizzle(sqlite);
 
@@ -100,4 +127,4 @@ export async function seedTestPlanTestCases() {
     }
     console.log('Seeded test plan test case relationships');
   }
-} 
+}

@@ -244,10 +244,18 @@ export default function TestCaseForm({ initialData, onSubmit }: TestCaseFormProp
               >
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Step
               </Button>
-               <Controller
+              <Controller
                 name="steps"
                 control={form.control}
-                render={({ fieldState }) => fieldState.error ? <p className="text-sm font-medium text-destructive mt-1">{fieldState.error.message || fieldState.error.root?.message}</p> : null}
+                render={({ fieldState }) => (
+                  <div>
+                    {fieldState.error && (
+                      <p className="text-sm font-medium text-destructive mt-1">
+                        {fieldState.error.message || fieldState.error.root?.message}
+                      </p>
+                    )}
+                  </div>
+                )}
               />
             </div>
           </CardContent>

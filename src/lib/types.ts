@@ -39,25 +39,45 @@ export interface TestPlan {
   createdBy?: string;
 }
 
-export interface TestResultSummary {
-  totalTestCases: number;
-  passed: number;
-  failed: number;
-  skipped: number;
-  inProgress: number;
-  notStarted: number;
-}
-
-export interface Report {
+export interface TestStepResult {
   id: string;
-  title: string;
-  generatedAt: string; // ISO Date string
-  summary: TestResultSummary;
-  detailedResults: TestCase[]; // Could be a subset of test cases with their execution details
-  format?: 'XML' | 'Excel' | 'PDF' | 'DOCX';
+  stepId: string;
+  executionId: string;
+  status: TestExecutionStatus;
+  actualResult?: string;
+  comment?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// For react-hook-form
+export interface TestStepWithResult extends TestStep {
+  result: TestStepResult | null;
+}
+
+export interface TestExecution {
+  id: string;
+  testCaseId: string;
+  testPlanId?: string;
+  status: TestExecutionStatus;
+  startedAt: string;
+  completedAt?: string;
+  updatedAt: string;
+  executedBy?: string;
+  environment?: string;
+  notes?: string;
+}
+
+export interface TestExecutionDetail {
+  execution: TestExecution;
+  testCase: TestCase;
+  steps: TestStepWithResult[];
+}
+
+export interface RecentExecution {
+  execution: TestExecution;
+  testCase: TestCase;
+}
+
 export interface TestCaseFormData {
   title: string;
   description: string;
@@ -65,5 +85,17 @@ export interface TestCaseFormData {
   priority: Priority;
   status: TestCaseStatus;
   module?: string;
-  steps: { instruction: string; expectedResult: string }[];
+  steps: {
+    instruction: string;
+    expectedResult: string;
+  }[];
+}
+
+export interface TestResultSummary {
+  totalTestCases: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  inProgress: number;
+  notStarted: number;
 }
