@@ -35,3 +35,14 @@ export async function getTestCaseAction(id: string) {
   const result = await db.select().from(testCases).where(eq(testCases.id, id));
   return result[0] || null;
 }
+
+export async function getAllTestCasesAction() {
+  const result = await db.select().from(testCases);
+  return result;
+}
+
+export async function deleteTestCaseAction(id: string) {
+  await db.delete(testCases).where(eq(testCases.id, id));
+  return { success: true };
+}
+
